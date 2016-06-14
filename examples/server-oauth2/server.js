@@ -34,9 +34,9 @@ var bunyan = require('bunyan');
 var restify = require('restify');
 var config = require('./server_config');
 var passport = require('passport');
-var BearerStrategy = require('../../lib/passport-azure-ad/index').BearerStrategy;
+var BearerStrategy = require('../../lib/index').BearerStrategy;
 
-// We pass these options in to the ODICBearerStrategy.
+// We pass these options in to the BearerStrategy.
 
 var options = {
     // The URL of the metadata document for your app. We will put the keys for token validation from the URL found in the jwks_uri tag of the in the metadata.
@@ -69,8 +69,8 @@ var log = bunyan.createLogger({
         }, ]
 });
 
-  // if logging level specified, switch to it.
-  if (config.creds.loggingLevel) { log.levels("console", config.creds.loggingLevel); }
+// if logging level specified, switch to it.
+if (config.creds.loggingLevel) { log.levels("console", config.creds.loggingLevel); }
 
 // MongoDB setup
 // Setup some configuration
@@ -148,7 +148,7 @@ util.inherits(TaskNotFoundError, restify.RestError);
 
 function createTask(req, res, next) {
 
-    // Resitify currently has a bug which doesn't allow you to set default headers
+    // Restify currently has a bug which doesn't allow you to set default headers
     // This headers comply with CORS and allow us to mongodbServer our response to any origin
 
     res.header("Access-Control-Allow-Origin", "*");
