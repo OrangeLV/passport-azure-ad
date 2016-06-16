@@ -24,11 +24,7 @@ var express = require('express');
 var logger = require('connect-logger');
 var cookieParser = require('cookie-parser');
 var session = require('cookie-session');
-var fs = require('fs');
 var crypto = require('crypto');
-
-var passport = require('passport');
-var BearerStrategy = require('../../lib/index').BearerStrategy;
 
 var AuthenticationContext = require('adal-node').AuthenticationContext;
 
@@ -46,11 +42,6 @@ var sampleParameters = {
     resource : '81bfd647-8cea-425e-ad4d-e8ab5c43004a'
 };
 
-var options = {
-  identityMetadata : 'https://login.microsoftonline.com/sijun.onmicrosoft.com/.well-known/openid-configuration',
-  clientID : 'c233db9a-58e8-4055-a432-81914adbfc54',
-  clientSecret : 'FDKC4+58qyg/X1+RYHmHtGKM7aQY6I2xHb5qAvkmzuQ='
-}
 
 var authorityUrl = 'https://login.microsoftonline.com/' + sampleParameters.tenant;
 
@@ -65,42 +56,13 @@ function createAuthorizationUrl(state) {
   return authorizationUrl;
 }
 
-
-/*
- *      Passport setup
- */
-var owner = null;
-var users = [];
-
-var findByToken =  function(token) {
-  for (var i = 0, len = users.length; i < len; i++) {
-    if (users[i] == token.sub)
-      return users[i];
-  }
-  return null;
-}
-
-passport.use(new BearerStrategy(options,
-      function(token, done) {
-          console.log("get token: " + token);
-          var user = findByToken(token);
-          if (!user)
-            users.push(user);
-          owner = user;
-          done(null, user);
-     }
-));
-
-
+var userId = null;
+var refreshToken = null;
+var accessToken = null;
 
 /*
  *      Routing
  */
-
-app.get('/protected', passport.authenticate('oauth-bearer', {session : false}), 
-  function(req, res) {
-    res.send("owner is: " + owner);
-  });
 
 app.get('/', function(req, res) {
   res.redirect('login');
@@ -112,6 +74,7 @@ app.get('/login', function(req, res) {
 
   res.cookie('acookie', 'this is a cookie');
 
+  if (!userId) {
   res.send('\
 <head>\
   <title>FooBar</title>\
@@ -120,6 +83,15 @@ app.get('/login', function(req, res) {
   <a href="./auth">Login</a>\
 </body>\
     ');
+  } else {
+    var message = '<head><title>FooBar</title></head><body>' + 'Hello ' + userId + '<br><br> your accessToken is: ' + accessToken +
+    '<br><br> <a href="/resource">Get resource!</a></body>';
+    res.send(message);
+  }
+});
+
+app.get('/resource', function(req, res) {
+
 });
 
 // Clients get redirected here in order to create an OAuth authorize url and redirect them to AAD.
@@ -151,6 +123,8 @@ app.get('/getAToken', function(req, res) {
     }
     message += 'response: ' + JSON.stringify(response);
 
+    userId = response.userId;
+
     if (err) {
       res.send(message);
       return;
@@ -162,8 +136,9 @@ app.get('/getAToken', function(req, res) {
         message += 'refreshError: ' + refreshErr.message + '\n';
       }
       message += 'refreshResponse: ' + JSON.stringify(refreshResponse);
-
-      res.send(message); 
+      refreshToken = refreshResponse.refreshToken;
+      accessToken = refreshResponse.accessToken;
+      res.redirect('/'); 
     }); 
   });
 });
